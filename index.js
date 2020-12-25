@@ -23,23 +23,19 @@ connection.connect(function(err) {
     }
 
     console.log('connected as id ' + connection.threadId);
-})
-
+});
 
 const singleQuery = (query) => new Promise((resolve, reject) => 
 connection.query(query, (err, res) =>
 err != null ? reject(err) : resolve(res))); 
 
-const multiQuery = (query, values) => new Promise((resolve, reject) => 
-connection.query(query, values, (err, res) =>
-err != null ? reject(err) : resolve(res))); 
-
-
 async function main(){
     let tables = await singleQuery(`show tables;`);
 
-    for(let table of tables) {
-        let res = await singleQuery(`select * from ${tables[0].Tables_in_mydb};`)
+    const search = 'Tables_in_' + 'xsl5uthvvcxby29g';
+
+    for(let table of tables.slice(0, tables.length)) {
+        let res = await singleQuery(`select * from ${table[search]};`)
         console.log(res);
 
         let insertCopy = '';
@@ -52,14 +48,35 @@ async function main(){
                 values.push(elem[key]);
             }
             
-            insertCopy += `INSERT INTO ${table.Tables_in_mydb} (${keys.join(',')}) VALUES (${values.join(',')});\n`;
+            let values_str = ``;
+            for(let value of values) {
+                if(typeof value === "string"){
+                    values_str += `'${value}',`
+                } else {
+                    values_str += `${value},`
+                }
+            }
+            values_str = values_str.slice(0, values_str.length-1);
+
+            insertCopy += `INSERT INTO ${table[search]} (${keys.join(',')}) VALUES (${values_str});\n`;
         }
 
-        fs.writeFileSync(`${path}/${table.Tables_in_mydb}.sql`, insertCopy);
+        fs.writeFileSync(`${path}/${table[search]}.sql`, insertCopy);
     }
 
 }
 
+async function main2() {
+    try {
+        await main();
+    } catch (error) {
+        console.error(error)
+    } finally {
+        console.log("Close connection!")
+        connection.end();
+    }
+}
+
 if(path){
-    main();
+    main2()
 }
